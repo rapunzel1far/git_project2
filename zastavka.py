@@ -1,10 +1,14 @@
 import os
+from random import randint, random
 import sys
 import pygame
-from random import randint
+import random
+
 
 pygame.init()
 fontUI = pygame.font.Font(None, 30)
+
+
 def load_image(name, colorkey='black'):
     fullname = os.path.join('data', name)
     if not os.path.isfile(fullname):
@@ -12,9 +16,12 @@ def load_image(name, colorkey='black'):
         sys.exit()
     image = pygame.image.load(fullname)
     return image
+
+
 def terminate():
     pygame.quit()
     sys.exit()
+
 
 def start_screen():
     intro_text = ["ИГРА НА ДВОИХ",
@@ -23,7 +30,7 @@ def start_screen():
                   "Играть Пинг-Понг",
                   "Играть Танки"]
 
-    fon = pygame.transform.scale(load_image('fon3.jpg'), (WIDTH, HEIGHT))
+    fon = pygame.transform.scale(load_image('чеснок.jpg'), (WIDTH, HEIGHT))
     screen.blit(fon, (0, 0))
     font = pygame.font.Font(None, 30)
     text_coord = 50
@@ -38,7 +45,6 @@ def start_screen():
         coord.append(intro_rect)
         screen.blit(string_rendered, intro_rect)
 
-
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -50,8 +56,11 @@ def start_screen():
                         kuda = coord.index(rect)
                         if kuda == 4:
                             tanki()
+                        if kuda == 3:
+                            ping()
         pygame.display.flip()
         clock.tick(FPS)
+
 
 class UI:
     def __init__(self):
@@ -70,6 +79,8 @@ class UI:
                 rect = text.get_rect(center=(5 + i * 70 + 32, 5 + 11))
                 screen.blit(text, rect)
                 i += 1
+
+
 class Tank:
     def __init__(self, color, px, py, direct, keyList):
         objects.append(self)
@@ -157,6 +168,8 @@ class Bullet:
 
     def draw(self):
         pygame.draw.circle(screen, 'yellow', (self.px, self.py), 2)
+
+
 class Block:
     def __init__(self, px, py, size):
         objects.append(self)
@@ -206,9 +219,105 @@ def tanki():
         clock.tick(FPS)
 
 
+def ping():
+
+    racket_w = 15  # width
+    racket_h = 100  # height
+    racket_speed = 8
+
+    point_left = point_right = 0
+    font = pygame.font.Font(None, 50)
+
+    ball_r = 10
+    ball_d = 2 * ball_r
+    ball_speed = 4
+    ball_start_x = WIDTH / 2
+    ball_start_y = HEIGHT / 2
+    dx = 1
+    dy = -1
+
+    screen = pygame.display.set_mode(size)
+
+    racket_right = pygame.Rect(WIDTH - racket_w - 5, int(HEIGHT / 2 - racket_h / 2), racket_w, racket_h)
+    racket_left = pygame.Rect(5, int(HEIGHT / 2 - racket_h / 2), racket_w, racket_h)
+    ball = pygame.Rect(ball_start_x, ball_start_y, ball_d, ball_d)
+
+    green = (87, 166, 57)  # Тёмный жёлто-зелёный
+    racket_color = (187, 0, 10)
+    clock = pygame.time.Clock()
+
+    # pygame.display.set_caption('Ping-Pong')
+    sound = pygame.mixer.Sound('data/ball_sound.mp3.mp3')
+    pause = False
+    game = True
+    while True:
+        screen.fill(green)
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                exit()
+        key = pygame.key.get_pressed()
+        if key[pygame.K_UP] and racket_right.top > 0:
+            racket_right.top -= racket_speed
+        elif key[pygame.K_DOWN] and racket_right.bottom < HEIGHT:
+            racket_right.bottom += racket_speed
+        elif key[pygame.K_w] and racket_left.top > 0:
+            racket_left.top -= racket_speed
+        elif key[pygame.K_s] and racket_left.bottom < HEIGHT:
+            racket_left.bottom += racket_speed
+
+        pygame.draw.rect(screen, racket_color, racket_right)
+        pygame.draw.rect(screen, racket_color, racket_left)
+        pygame.draw.circle(screen, (255, 255, 255), ball.center, ball_r)
+        ball.x += ball_speed * dx
+        ball.y += ball_speed * dy
+
+        if ball.centery < ball_r or ball.centery > HEIGHT:
+            dy = -dy
+            pygame.mixer.Sound.play(sound)
+        elif ball.colliderect(racket_left) or ball.colliderect(racket_right):
+            if ball.colliderect(racket_left):
+                ball_speed += 1
+            pygame.mixer.Sound.play(sound)
+            dx = -dx
+
+        if ball.centerx > WIDTH:
+            point_right += 1
+            ball.x = ball_start_x
+            ball.y = ball_start_y
+
+            dx = dy = 0
+            goal_time = pygame.time.get_ticks()
+            pause = True
+
+        if ball.centerx < 0:
+            point_left += 1
+            ball.x = ball_start_x
+            ball.y = ball_start_y
+
+            dx = dy = 0
+            goal_time = pygame.time.get_ticks()
+            pause = True
+        if pause:
+            ball_speed = 4
+            time = pygame.time.get_ticks()
+            if time - goal_time > 2500:
+                dx = random.choice((1, -1))
+                dy = random.choice((1, -1))
+                pause = False
+
+        right_text = font.render(f"{point_left}", True, pygame.Color("White"))
+        screen.blit(right_text, (WIDTH - 40, 20))
+
+        left_text = font.render(f"{point_right}", True, pygame.Color("White"))
+        screen.blit(left_text, (20, 20))
+
+        pygame.display.flip()
+        clock.tick(FPS)
+
+
 FPS = 50
 STEP = 5
-TILE =32
+TILE = 32
 size = WIDTH, HEIGHT = 800, 600
 screen = pygame.display.set_mode(size)
 clock = pygame.time.Clock()
@@ -217,84 +326,18 @@ bullets = []
 imageblock = load_image('box.png')
 imgBrick = pygame.transform.scale(imageblock, (TILE, TILE))
 
-
 tile_width = tile_height = 50
 Tank('blue', 100, 275, 0, (pygame.K_a, pygame.K_d, pygame.K_w, pygame.K_s, pygame.K_SPACE))
 Tank('red', 650, 275, 0, (pygame.K_LEFT, pygame.K_RIGHT, pygame.K_UP, pygame.K_DOWN, pygame.K_RETURN))
 DIRECTS = [[0, -1], [1, 0], [0, 1], [-1, 0]]
 ui = UI()
 
-
-
-
 start_screen()
 
 pygame.quit()
 terminate()
 
-#додумать
-# import os
-# import sys
-# import pygame
-#
-#
-# def load_image(name, colorkey='black'):
-#     fullname = os.path.join('data', name)
-#     if not os.path.isfile(fullname):
-#         print(f"Файл с изображением '{fullname}' не найден")
-#         sys.exit()
-#     image = pygame.image.load(fullname)
-#     return image
-#
-# def terminate():
-#     pygame.quit()
-#     sys.exit()
-#
-# def start_screen():
-#     intro_text = ["Правила игры",
-#                   "Чемпионат",
-#                   "Игра 'Пинг-Понг'",
-#                   "Игра 'Танки'"]
-#     fon = pygame.transform.scale(load_image('12.jpg'), (WIDTH, HEIGHT))
-#     screen.blit(fon, (0, 0))
-#     font = pygame.font.Font(None, 30)
-#     text_coord = 50
-#     for line in intro_text:
-#         string_rendered = font.render(line, 1, pygame.Color('white'))
-#         intro_rect = string_rendered.get_rect()
-#         text_coord += 10
-#         intro_rect.top = text_coord
-#         intro_rect.x = 10
-#         text_coord += intro_rect.height
-#         screen.blit(string_rendered, intro_rect)
-#
-#     while True:
-#         for event in pygame.event.get():
-#             if event.type == pygame.QUIT:
-#                 terminate()
-#             elif event.type == pygame.KEYDOWN or \
-#                     event.type == pygame.MOUSEBUTTONDOWN:
-#                 return  # начинаем игру
-#         pygame.display.flip()
-#         clock.tick(FPS)
-#
-# pygame.init()
-# pygame.key.set_repeat(200, 70)
-#
-# FPS = 50
-# STEP = 5
-# size = WIDTH, HEIGHT = 500, 400
-# screen = pygame.display.set_mode(size)
-# clock = pygame.time.Clock()
-#
-#
-# tile_width = tile_height = 50
-# player = None
-# all_sprites = pygame.sprite.Group()
-# tiles_group = pygame.sprite.Group()
-# player_group = pygame.sprite.Group()
-#
-#
-#
-# start_screen()
+# додумать
+
+
 
